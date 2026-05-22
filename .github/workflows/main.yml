@@ -20,6 +20,7 @@ jobs:
 
       - name: Create Decompile Script
         run: |
+          mkdir -p $HOME/output
           cat > DecompileAll.java << 'EOF'
           //@category Analysis
           import ghidra.app.decompiler.*;
@@ -28,9 +29,10 @@ jobs:
 
           public class DecompileAll extends GhidraScript {
               public void run() throws Exception {
+                  String outPath = System.getProperty("user.home") + "/output/decompiled_output.c";
                   DecompInterface decomp = new DecompInterface();
                   decomp.openProgram(currentProgram);
-                  PrintWriter out = new PrintWriter(new FileWriter("decompiled_output.c"));
+                  PrintWriter out = new PrintWriter(new FileWriter(outPath));
                   for (Function f : currentProgram.getFunctionManager().getFunctions(true)) {
                       DecompileResults res = decomp.decompileFunction(f, 60, monitor);
                       if (res != null && res.decompileCompleted()) {
@@ -39,7 +41,7 @@ jobs:
                       }
                   }
                   out.close();
-                  println("Done! Output: decompiled_output.c");
+                  println("Saved to: " + outPath);
               }
           }
           EOF
@@ -53,8 +55,11 @@ jobs:
             -scriptPath $(pwd) \
             -deleteProject
 
+      - name: Debug - Find output
+        run: find $HOME/output -type f && ls -lh $HOME/output/ || echo "Output folder empty!"
+
       - name: Upload Result
         uses: actions/upload-artifact@v4
         with:
           name: decompiled-output
-          path: decompiled_output.c
+          path: ~/output/decompiled_output.c
